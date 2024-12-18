@@ -1,0 +1,155 @@
+import pandas as pd
+import numpy as np
+from sklearn.ensemble import RandomForestRegressor
+from xgboost import XGBRegressor
+import lightgbm as lgb
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_absolute_error, r2_score
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import LabelEncoder
+
+# Step 1: Load and preprocess the data
+def load_and_preprocess_data(file_path):
+    # Load data
+    data = pd.read_excel(file_path)
+
+    # Remove commas from columns that should be numeric and convert them to float
+    columns_to_clean = [
+        "above_grd_sf", "basemt_tot_sf", "basemt_fin_sf", "basemt_unf_sf", 
+        "est_land_sf", "reception_no", "sale_price", "market_area", 
+        "sale_year", "sale_month", "square_footage"
+    ]
+
+    # Remove commas and convert to numeric for the relevant columns
+    for col in columns_to_clean:
+        if col in data.columns:
+            data[col] = data[col].replace({',': ''}, regex=True)  # Remove commas
+            data[col] = pd.to_numeric(data[col], errors='coerce')  # Convert to numeric
+
+    # Drop rows with missing sale prices
+    data = data.dropna(subset=["sale_price"])
+
+    # Remove unnecessary columns, including 'price_per_sqr.ft.' and 'time_adjust_sales_price'
+    columns_to_remove = [
+        "price_per_sqr.ft.", "time_adjust_sales_price"  # Exclude these columns
+    ]
+    data = data.drop(columns=columns_to_remove, errors="ignore")
+
+    # Apply Label Encoding to categorical columns
+    categorical_columns = ['property_type', 'design', 'quality', 'location']
+    label_encoder = LabelEncoder()
+    for column in categorical_columns:
+        if column in data.columns:
+            data[column] = label_encoder.fit_transform(data[column].astype(str))
+
+    # Fill missing values with the column's median for numerical columns
+    data = data.fillna(data.median(numeric_only=True))
+
+    return data
+
+# Step 2: Scale features
+def scale_features(X):
+    scaler = StandardScaler()
+    X_scaled = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
+    return X_scaled, scaler
+
+# Step 3: Train the ensemble models (Random Forest, XGBoost, LightGBM)
+def train_models(data):
+    # Separate features (X) and target (y)
+    X = data.drop(columns=["sale_price"])
+    y = data["sale_price"]
+
+    # Split into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Scale features
+    X_train_scaled, scaler = scale_features(X_train)
+    X_test_scaled = scaler.transform(X_test)
+
+    # Train Random Forest
+    rf_model = RandomForestRegressor(n_estimators=500, max_depth=20, random_state=42)
+    rf_model.fit(X_train_scaled, y_train)
+
+    # Train XGBoost
+    xgb_model = XGBRegressor(n_estimators=500, learning_rate=0.05, max_depth=10, random_state=42)
+    xgb_model.fit(X_train_scaled, y_train)
+
+    # Train LightGBM
+    lgb_model = lgb.LGBMRegressor(n_estimators=500, learning_rate=0.05, max_depth=10, random_state=42)
+    lgb_model.fit(X_train_scaled, y_train)
+
+    return rf_model, xgb_model, lgb_model, X_test_scaled, y_test, scaler
+
+# Step 4: Evaluate ensemble performance
+def ensemble_predict_and_evaluate(rf_model, xgb_model, lgb_model, X_test, y_test):
+    # Predict using each model
+    rf_pred = rf_model.predict(X_test)
+    xgb_pred = xgb_model.predict(X_test)
+    lgb_pred = lgb_model.predict(X_test)
+
+    # Average predictions for ensemble
+    ensemble_pred = (rf_pred + xgb_pred + lgb_pred) / 3
+
+    # Evaluate performance
+    mae = mean_absolute_error(y_test, ensemble_pred)
+    r2 = r2_score(y_test, ensemble_pred)
+    print(f"Ensemble Performance:\n - MAE: ${mae:,.2f}\n - R²: {r2:.2f}")
+
+    return ensemble_pred
+
+# Step 5: Format new house data for prediction
+def format_new_house_data(training_columns, user_inputs):
+    new_house_template = {col: 0 for col in training_columns}
+    new_house_template.update(user_inputs)
+    new_house_df = pd.DataFrame([new_house_template])
+    new_house_df = new_house_df[training_columns]
+    return new_house_df
+
+# Step 6: Feature importance (debugging step)
+def print_feature_importance(model, feature_columns):
+    importances = model.feature_importances_
+    feature_importance = pd.DataFrame({
+        'Feature': feature_columns,
+        'Importance': importances
+    }).sort_values(by='Importance', ascending=False)
+    print("\nFeature Importance (Random Forest):")
+    print(feature_importance)
+
+# Main script
+if __name__ == "__main__":
+    # File path to the cleaned dataset
+    file_path = "Housing_Data_3.xlsx"  # Updated to use the new file
+
+    # Step 1: Load and preprocess the data
+    data = load_and_preprocess_data(file_path)
+
+    # Step 2: Train the models
+    rf_model, xgb_model, lgb_model, X_test, y_test, scaler = train_models(data)
+
+    # Step 3: Evaluate ensemble performance
+    ensemble_predict_and_evaluate(rf_model, xgb_model, lgb_model, X_test, y_test)
+
+    # Step 4: Predict a new house price (Make sure variables match the new dataset)
+    user_inputs = {
+        'eff_yr_built': 1962,
+        'above_grd_sf': 1510,
+        'basemt_tot_sf': 0,
+        'basemt_fin_sf': 1472,
+        'basemt_unf_sf': 0,
+        'est_land_sf': 7226-2982,
+        'square_footage': 2982,
+        'location': 0,  # Encoded value for location
+        'design': 5,  # Encoded value for design
+        'quality': 7  # Encoded value for quality
+    }
+    training_features = data.drop(columns=["sale_price"]).columns
+    new_house_df = format_new_house_data(training_features, user_inputs)
+    new_house_scaled = scaler.transform(new_house_df)
+
+    # Predict the price
+    predicted_price = rf_model.predict(new_house_scaled)
+    print(f"\nPredicted price for the new house: ${predicted_price[0]:,.2f}")
+
+    # Step 5: Debug feature importance
+    print_feature_importance(rf_model, training_features)
