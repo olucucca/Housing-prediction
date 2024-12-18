@@ -1,0 +1,21 @@
+
+Introduction
+This project started with me wanting to learn how to code. My information management class inspired me to be more involved with code and AI. I began by having ChatGPT teach me how to do some basic coding, inputting numbers into Excel spreadsheets, and various beginner tasks. Then, I realized that my time would be much more valuable, prompting ChatGPT to create and tweak a coding project I wanted to make. I landed on trying to emulate Zillow’s Zestimate algorithm using Boulder housing data and a machine-learning algorithm. To accomplish this, I would have ChatGPT teach me everything I need to know and then prompt engineer my way to a satisfactory outcome. 
+
+The Process
+•	Download housing data from the Boulder County website (2015-present)
+•	Have the AI clean and aggregate the data
+•	Introduce the AI to the project idea. 
+•	Prompt the AI to start building and perfecting the code
+The Coding 
+Since I had no prior knowledge of how to code, I knew it would be challenging to read and understand what the code was saying, and I ended up learning from exposure. The GPT would give me a chunk of code, and I would put it in the correct place through trial and error. After multiple error messages, I understood what the code was doing and what specific parts of it meant. The code started relatively simple, starting with just a Random Forest regressor; this code ended up having a $55,620 MAE, which surprised me. I then prompted the AI, asking how the MAE could be brought down, and then learned about an ensemble approach where you combine different machine learning models to create the most accurate result. I prompted the AI to provide these changes in the code and ended up with a MAE of $14,091 and R^2 of 1.00. I was immediately suspicious and tested the set with data from the spreadsheet without the target variable. It would respond around the same for each house, which would always be hundreds of thousands off. I did some digging and discovered that I had a target leakage problem with a price per square foot variable that I should have removed before beginning the code. Once I removed this variable from the training set, the MAE was drastically higher, going about to $300,000. I shifted my focus from the MAE towards how well it would perform on houses on Zillow. I had to make a lot of changes to the code since the average home on Zillow didn’t have as much information as the dataset did. After the changes were made the MAE was brought down to $125,758 and the R^2 to 0.88. I inputted data from the Zillow houses to test the model on unseen data, and it performed exceptionally well, with the most considerable difference being only $100,000. This whole process was extremely tedious and took about four days to perfect. The GPT seemed to perform worse as the prompting got more complicated. It could still accomplish what I needed, but it would be prolonged and not make the changes it was prompted to sometimes.  
+Possibilities for High MAE
+•	The variable “house condition” was ambiguous 
+•	The testing data had to be reduced due to the limited specificity of data on Zillow, which in turn limited accuracy
+•	Possible overtraining and recent housing market changes affecting the current price.
+What I Would Change
+•	Clean the data better
+•	Start by looking at the variables I will have access to outside of the dataset so that I don’t have to make multiple changes that could affect the model
+•	Use k-fold cross-validation so that I could test quickly and reduce the chance of overfitting
+Conclusion
+This project provided an enriching experience and gave me a sense of accomplishment beyond my academic pursuits. I significantly expanded my knowledge of coding, realizing that it is not a source of confusion but rather a valuable skill to be cultivated. The primary objective of this project was to prove that AI is so beneficial that it could teach someone who has never coded to develop a machine-learning algorithm capable of predicting house prices based solely on ten variables. I hope that anyone viewing this project document will take away the message that AI is a powerful tool that can make the business world and everyone more efficient and give us the ability to accomplish tasks that we view as impossible. 
